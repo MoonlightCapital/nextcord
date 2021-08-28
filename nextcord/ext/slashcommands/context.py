@@ -48,7 +48,6 @@ if TYPE_CHECKING:
     from .cog import Cog
     from .core import Command
     from .help import HelpCommand
-    from .view import StringView
 
 __all__ = (
     'Context',
@@ -127,7 +126,6 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         *,
         interaction: Interaction,
         bot: BotT,
-        view: StringView,
         args: List[Any] = MISSING,
         kwargs: Dict[str, Any] = MISSING,
         command: Optional[Command] = None,
@@ -144,7 +142,6 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         self.args: List[Any] = args or []
         self.kwargs: Dict[str, Any] = kwargs or {}
         self.command: Optional[Command] = command
-        self.view: StringView = view
         self.invoked_with: Optional[str] = invoked_with
         self.invoked_parents: List[str] = invoked_parents or []
         self.invoked_subcommand: Optional[Command] = invoked_subcommand
@@ -217,12 +214,10 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
             The context to reinvoke is not valid.
         """
         cmd = self.command
-        view = self.view
         if cmd is None:
             raise ValueError('This context is not valid.')
 
         # some state to revert to when we're done
-        index, previous = view.index, view.previous
         invoked_with = self.invoked_with
         invoked_subcommand = self.invoked_subcommand
         invoked_parents = self.invoked_parents
@@ -230,10 +225,8 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
 
         if restart:
             to_call = cmd.root_parent or cmd
-            view.index = 0 # TODO: this was hardcoded from when prefixes were a thing
-            view.previous = 0
             self.invoked_parents = []
-            self.invoked_with = view.get_word() # advance to get the root command
+            self.invoked_with = self.interaction.data["name"]
         else:
             to_call = cmd
 
@@ -241,8 +234,6 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
             await to_call.reinvoke(self, call_hooks=call_hooks)
         finally:
             self.command = cmd
-            view.index = index
-            view.previous = previous
             self.invoked_with = invoked_with
             self.invoked_subcommand = invoked_subcommand
             self.invoked_parents = invoked_parents

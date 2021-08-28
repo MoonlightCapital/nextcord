@@ -38,7 +38,6 @@ from typing import Any, Callable, Mapping, List, Dict, TYPE_CHECKING, Optional, 
 import nextcord
 
 from .core import GroupMixin
-from .view import StringView
 from .context import Context
 from . import errors
 from .help import HelpCommand, DefaultHelpCommand
@@ -66,50 +65,6 @@ T = TypeVar('T')
 CFT = TypeVar('CFT', bound='CoroFunc')
 CXT = TypeVar('CXT', bound='Context')
 
-def when_mentioned(bot: Union[Bot, AutoShardedBot], msg: Message) -> List[str]:
-    """A callable that implements a command prefix equivalent to being mentioned.
-
-    These are meant to be passed into the :attr:`.Bot.command_prefix` attribute.
-    """
-    # bot.user will never be None when this is called
-    return [f'<@{bot.user.id}> ', f'<@!{bot.user.id}> ']  # type: ignore
-
-def when_mentioned_or(*prefixes: str) -> Callable[[Union[Bot, AutoShardedBot], Message], List[str]]:
-    """A callable that implements when mentioned or other prefixes provided.
-
-    These are meant to be passed into the :attr:`.Bot.command_prefix` attribute.
-
-    Example
-    --------
-
-    .. code-block:: python3
-
-        bot = commands.Bot(command_prefix=commands.when_mentioned_or('!'))
-
-
-    .. note::
-
-        This callable returns another callable, so if this is done inside a custom
-        callable, you must call the returned callable, for example:
-
-        .. code-block:: python3
-
-            async def get_prefix(bot, message):
-                extras = await prefixes_for(message.guild) # returns a list
-                return commands.when_mentioned_or(*extras)(bot, message)
-
-
-    See Also
-    ----------
-    :func:`.when_mentioned`
-    """
-    def inner(bot, msg):
-        r = list(prefixes)
-        r = when_mentioned(bot, msg) + r
-        return r
-
-    return inner
-
 def _is_submodule(parent: str, child: str) -> bool:
     return parent == child or child.startswith(parent + ".")
 
@@ -120,9 +75,8 @@ class _DefaultRepr:
 _default = _DefaultRepr()
 
 class BotBase(GroupMixin):
-    def __init__(self, command_prefix, help_command=_default, description=None, **options):
+    def __init__(self, help_command=_default, description=None, **options):
         super().__init__(**options)
-        self.command_prefix = command_prefix
         self.extra_events: Dict[str, List[CoroFunc]] = {}
         self.__cogs: Dict[str, Cog] = {}
         self.__extensions: Dict[str, types.ModuleType] = {}
@@ -134,7 +88,6 @@ class BotBase(GroupMixin):
         self.description = inspect.cleandoc(description) if description else ''
         self.owner_id = options.get('owner_id')
         self.owner_ids = options.get('owner_ids', set())
-        self.strip_after_prefix = options.get('strip_after_prefix', False)
 
         if self.owner_id and self.owner_ids:
             raise TypeError('Both owner_id and owner_ids are set.')
@@ -863,44 +816,6 @@ class BotBase(GroupMixin):
 
     # command processing
 
-    async def get_prefix(self, message: Message) -> Union[List[str], str]:
-        """|coro|
-
-        Retrieves the prefix the bot is listening to
-        with the message as a context.
-
-        Parameters
-        -----------
-        message: :class:`nextcord.Message`
-            The message context to get the prefix of.
-
-        Returns
-        --------
-        Union[List[:class:`str`], :class:`str`]
-            A list of prefixes or a single prefix that the bot is
-            listening for.
-        """
-        prefix = ret = self.command_prefix
-        if callable(prefix):
-            ret = await nextcord.utils.maybe_coroutine(prefix, self, message)
-
-        if not isinstance(ret, str):
-            try:
-                ret = list(ret)
-            except TypeError:
-                # It's possible that a generator raised this exception.  Don't
-                # replace it with our own error if that's the case.
-                if isinstance(ret, collections.abc.Iterable):
-                    raise
-
-                raise TypeError("command_prefix must be plain string, iterable of strings, or callable "
-                                f"returning either of these, not {ret.__class__.__name__}")
-
-            if not ret:
-                raise ValueError("Iterable command_prefix must contain at least one prefix")
-
-        return ret
-
     async def get_context(self, interaction: Interaction, *, cls: Type[CXT] = Context) -> CXT:
         r"""|coro|
 
@@ -930,31 +845,14 @@ class BotBase(GroupMixin):
             The invocation context. The type of this can change via the
             ``cls`` parameter.
         """
-
-        view = StringView(message.content)
-        ctx = cls(view=view, bot=self, interaction=interaction)
+        ctx = cls(bot=self, interaction=interaction)
 
         if message.author.id == self.user.id:  # type: ignore
             return ctx
 
-        prefix = await self.get_prefix(message)
-        invoked_prefix = prefix
 
-        if isinstance(prefix, str):
-            if not view.skip_string(prefix):
-                return ctx
-        else:
-            try:
-                # Getting here shouldn't happen
-                raise
-
-        if self.strip_after_prefix:
-            view.skip_ws()
-
-        invoker = view.get_word()
+        invoker = interaction.data["name"]
         ctx.invoked_with = invoker
-        # type-checker fails to narrow invoked_prefix type.
-        ctx.prefix = invoked_prefix  # type: ignore
         ctx.command = self.all_commands.get(invoker)
         return ctx
 
@@ -1029,35 +927,6 @@ class Bot(BotBase, nextcord.Client):
 
     Attributes
     -----------
-    command_prefix
-        The command prefix is what the message content must contain initially
-        to have a command invoked. This prefix could either be a string to
-        indicate what the prefix should be, or a callable that takes in the bot
-        as its first parameter and :class:`nextcord.Message` as its second
-        parameter and returns the prefix. This is to facilitate "dynamic"
-        command prefixes. This callable can be either a regular function or
-        a coroutine.
-
-        An empty string as the prefix always matches, enabling prefix-less
-        command invocation. While this may be useful in DMs it should be avoided
-        in servers, as it's likely to cause performance issues and unintended
-        command invocations.
-
-        The command prefix could also be an iterable of strings indicating that
-        multiple checks for the prefix should be used and the first one to
-        match will be the invocation prefix. You can get this prefix via
-        :attr:`.Context.prefix`. To avoid confusion empty iterables are not
-        allowed.
-
-        .. note::
-
-            When passing multiple prefixes be careful to not pass a prefix
-            that matches a longer prefix occurring later in the sequence.  For
-            example, if the command prefix is ``('!', '!?')``  the ``'!?'``
-            prefix will never be matched to any message as the previous one
-            matches messages starting with ``!?``. This is especially important
-            when passing an empty string, it should always be last as no prefix
-            after it will be matched.
     case_insensitive: :class:`bool`
         Whether the commands should be case insensitive. Defaults to ``False``. This
         attribute does not carry over to groups. You must set it to every group if
@@ -1080,12 +949,6 @@ class Bot(BotBase, nextcord.Client):
         for the collection. You cannot set both ``owner_id`` and ``owner_ids``.
 
         .. versionadded:: 1.3
-    strip_after_prefix: :class:`bool`
-        Whether to strip whitespace characters after encountering the command
-        prefix. This allows for ``!   hello`` and ``!hello`` to both work if
-        the ``command_prefix`` is set to ``!``. Defaults to ``False``.
-
-        .. versionadded:: 1.7
     """
     pass
 
