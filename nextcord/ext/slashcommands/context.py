@@ -138,7 +138,6 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         command_failed: bool = False,
         current_parameter: Optional[inspect.Parameter] = None,
     ):
-        print(interaction)
         self.interaction: Interaction = interaction
         self.message: Optional[Message] = interaction.message
         self.bot: BotT = bot
@@ -230,7 +229,7 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         if restart:
             to_call = cmd.root_parent or cmd
             self.invoked_parents = []
-            self.invoked_with = self.interaction.data["name"]
+            self.invoked_with = self.interaction.command.name
         else:
             to_call = cmd
 
@@ -298,7 +297,7 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         """dict:
         Options passed to the command.
         """
-        return self.interaction.data['options']
+        return self.interaction.command.options
 
     async def send_help(self, *args: Any) -> Any:
         """send_help(entity=<bot>)

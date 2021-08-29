@@ -846,7 +846,7 @@ class BotBase(GroupMixin):
         ctx = cls(bot=self, interaction=interaction)
 
 
-        invoker = interaction.data["name"]
+        invoker = interaction.command.name
         ctx.invoked_with = invoker
         ctx.command = self.all_commands.get(invoker)
         return ctx

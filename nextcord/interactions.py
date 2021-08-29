@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union
 import asyncio
 
 from . import utils
-from .enums import try_enum, InteractionType, InteractionResponseType
+from .enums import try_enum, InteractionType, InteractionResponseType, ApplicationCommandType, ApplicationCommandOptionType
 from .errors import InteractionResponded, HTTPException, ClientException
 from .channel import PartialMessageable, ChannelType
 
@@ -44,6 +44,8 @@ __all__ = (
     'Interaction',
     'InteractionMessage',
     'InteractionResponse',
+    'ApplicationCommandResponse',
+    'ApplicationCommandInteractionOption',
 )
 
 if TYPE_CHECKING:
@@ -188,6 +190,12 @@ class Interaction:
         In a non-guild context where this doesn't apply, an empty permissions object is returned.
         """
         return Permissions(self._permissions)
+
+    @property
+    def command(self) -> Optional[ApplicationCommandResponse]:
+        if self.type == InteractionType.application_command:
+            return ApplicationCommandResponse(self.data)
+        return None
 
     @utils.cached_slot_property('_cs_response')
     def response(self) -> InteractionResponse:
@@ -765,3 +773,48 @@ class InteractionMessage(Message):
             asyncio.create_task(inner_call())
         else:
             await self._state._interaction.delete_original_message()
+
+
+class ApplicationCommandResponse:
+    """Represents an application command
+
+    .. versionadded:: 2.0
+    """
+
+    __slots__ = (
+        'id',
+        'name',
+        'type',
+        'resolved',
+        'options',
+        'target_id',
+    )
+
+    def __init__(self, data):
+        self.id: int = utils._get_as_snowflake(data, 'id')
+        self.name: str = data['name']
+        self.type: Optional[ApplicationCommandType] = try_enum(ApplicationCommandType, data['type'])
+        self.options = list(ApplicationCommandInteractionOption(opt) for opt in data.get('options', []))
+        self.resolved = data.get('resolved', []) # TODO: improve this
+        self.target_id = utils._get_as_snowflake(data, 'target_id')
+
+
+class ApplicationCommandInteractionOption:
+    """Represents an application command option
+
+    .. versionadded:: 2.0
+    """
+
+    __slots__ = (
+        'name',
+        'type',
+        'value',
+        'options',
+    )
+
+    def __init__(self, data: dict):
+
+        self.name : str = data['name']
+        self.type : ApplicationCommandOptionType = try_enum(ApplicationCommandOptionType, data['type'])
+        self.value : data.get('value')
+        self.options = (ApplicationCommandInteractionOption(opt) for opt in data.get('options', []))
