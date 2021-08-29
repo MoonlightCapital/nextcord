@@ -34,6 +34,8 @@ import nextcord.utils
 from nextcord.message import Message
 from nextcord.interactions import Interaction, InteractionResponse
 
+from .view import StringView
+
 if TYPE_CHECKING:
     from typing_extensions import ParamSpec
 
@@ -136,7 +138,8 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         command_failed: bool = False,
         current_parameter: Optional[inspect.Parameter] = None,
     ):
-        self.interaction: Interaction = interaction,
+        print(interaction)
+        self.interaction: Interaction = interaction
         self.message: Optional[Message] = interaction.message
         self.bot: BotT = bot
         self.args: List[Any] = args or []
@@ -148,6 +151,8 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         self.subcommand_passed: Optional[str] = subcommand_passed
         self.command_failed: bool = command_failed
         self.current_parameter: Optional[inspect.Parameter] = current_parameter
+
+        self.view: StringView = StringView('') # TODO: this is hacky
 
     async def invoke(self, command: Command[CogT, P, T], /, *args: P.args, **kwargs: P.kwargs) -> T:
         r"""|coro|
