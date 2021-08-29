@@ -699,8 +699,8 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
     async def _parse_arguments(self, ctx: Context) -> None:
         ctx.args = [ctx] if self.cog is None else [self.cog, ctx]
-        ctx.kwargs = {option.name: option.value for option in ctx.options}
-        
+        ctx.kwargs = ctx.interaction.command.options_dict
+
         args = ctx.args
         kwargs = ctx.kwargs
 
