@@ -549,7 +549,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
                 # into just X and do the parsing that way.
                 converter = converter.converter
 
-        if view.eof:
+        """if view.eof:
             if param.kind == param.VAR_POSITIONAL:
                 raise RuntimeError() # break the loop
             if required:
@@ -558,7 +558,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
                 if hasattr(converter, '__commands_is_flag__') and converter._can_be_constructible():
                     return await converter._construct_default(ctx)
                 raise MissingRequiredArgument(param)
-            return param.default
+            return param.default"""
 
         previous = view.index
         if consume_rest_is_special:
@@ -699,7 +699,8 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
     async def _parse_arguments(self, ctx: Context) -> None:
         ctx.args = [ctx] if self.cog is None else [self.cog, ctx]
-        ctx.kwargs = {}
+        ctx.kwargs = {option.name: option.value for option in ctx.options}
+        
         args = ctx.args
         kwargs = ctx.kwargs
 
@@ -722,10 +723,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
         for name, param in iterator:
             ctx.current_parameter = param
-            if param.kind in (param.POSITIONAL_OR_KEYWORD, param.POSITIONAL_ONLY):
-                transformed = await self.transform(ctx, param)
-                args.append(transformed)
-            elif param.kind == param.KEYWORD_ONLY:
+            if param.kind == param.KEYWORD_ONLY:
                 # kwarg only param denotes "consume rest" semantics
                 if self.rest_is_raw:
                     converter = get_converter(param)
