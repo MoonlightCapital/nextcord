@@ -785,18 +785,28 @@ class ApplicationCommandResponse:
         'id',
         'name',
         'type',
-        'resolved',
-        'options',
         'target_id',
+
+        '_resolved',
+        '_options',
     )
 
     def __init__(self, data):
         self.id: int = utils._get_as_snowflake(data, 'id')
         self.name: str = data['name']
         self.type: Optional[ApplicationCommandType] = try_enum(ApplicationCommandType, data['type'])
-        self.options = list(ApplicationCommandInteractionOption(opt) for opt in data.get('options', []))
-        self.resolved = data.get('resolved', []) # TODO: improve this
+        self._options = data.get('options', [])
+        self._resolved = data.get('resolved', []) # TODO: implement this
         self.target_id = utils._get_as_snowflake(data, 'target_id')
+
+    @property
+    def options(self) -> Optional[List[ApplicationCommandInteractionOption]]:
+        return [ApplicationCommandInteractionOption(opt) for opt in self._options]
+
+    @property
+    def options_dict(self) -> Optional[Dict[str, str]]:
+        return {option.name: option.value or option.options for option in self.options}
+
 
 
 class ApplicationCommandInteractionOption:
@@ -814,7 +824,7 @@ class ApplicationCommandInteractionOption:
 
     def __init__(self, data: dict):
 
-        self.name : str = data['name']
-        self.type : ApplicationCommandOptionType = try_enum(ApplicationCommandOptionType, data['type'])
-        self.value : data.get('value')
-        self.options = (ApplicationCommandInteractionOption(opt) for opt in data.get('options', []))
+        self.name: str = data['name']
+        self.type: ApplicationCommandOptionType = try_enum(ApplicationCommandOptionType, data['type'])
+        self.value = data.get('value')
+        self.options = [ApplicationCommandInteractionOption(opt) for opt in data.get('options', [])]
