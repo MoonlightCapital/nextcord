@@ -53,8 +53,6 @@ if TYPE_CHECKING:
     )
 
 __all__ = (
-    'when_mentioned',
-    'when_mentioned_or',
     'Bot',
     'AutoShardedBot',
 )
@@ -847,9 +845,6 @@ class BotBase(GroupMixin):
         """
         ctx = cls(bot=self, interaction=interaction)
 
-        if message.author.id == self.user.id:  # type: ignore
-            return ctx
-
 
         invoker = interaction.data["name"]
         ctx.invoked_with = invoker
@@ -910,7 +905,7 @@ class BotBase(GroupMixin):
 
     async def on_interaction(self, interaction):
 
-        if interaction.type != discord.InteractionType.application_command:
+        if interaction.type != nextcord.InteractionType.application_command:
             return
 
         await self.process_commands(interaction)

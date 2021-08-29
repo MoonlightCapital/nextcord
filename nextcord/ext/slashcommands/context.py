@@ -32,7 +32,7 @@ import nextcord.abc
 import nextcord.utils
 
 from nextcord.message import Message
-from nextcord.interaction import Interaction
+from nextcord.interactions import Interaction, InteractionResponse
 
 if TYPE_CHECKING:
     from typing_extensions import ParamSpec
@@ -148,7 +148,6 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         self.subcommand_passed: Optional[str] = subcommand_passed
         self.command_failed: bool = command_failed
         self.current_parameter: Optional[inspect.Parameter] = current_parameter
-        self._state: ConnectionState = self.message._state
 
     async def invoke(self, command: Command[CogT, P, T], /, *args: P.args, **kwargs: P.kwargs) -> T:
         r"""|coro|
@@ -288,6 +287,13 @@ class Context(nextcord.abc.Messageable, Generic[BotT]):
         r"""Optional[:class:`.VoiceProtocol`]: A shortcut to :attr:`.Guild.voice_client`\, if applicable."""
         g = self.guild
         return g.voice_client if g else None
+
+    @property
+    def options(self) -> dict: # TODO: use this more often
+        """dict:
+        Options passed to the command.
+        """
+        return self.interaction.data['options']
 
     async def send_help(self, *args: Any) -> Any:
         """send_help(entity=<bot>)

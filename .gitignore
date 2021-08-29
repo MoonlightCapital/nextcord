@@ -15,3 +15,5 @@ docs/crowdin.py
 *.flac
 *.mo
 pyproject.toml
+build
+dist
