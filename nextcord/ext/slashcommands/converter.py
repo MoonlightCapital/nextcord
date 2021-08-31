@@ -109,6 +109,8 @@ class Converter(Protocol[T_co]):
     method to do its conversion logic. This method must be a :ref:`coroutine <coroutine>`.
     """
 
+    primitive_type: nextcord.ApplicationCommandOptionType = nextcord.ApplicationCommandOptionType.string
+
     async def convert(self, ctx: Context, argument: str) -> T_co:
         """|coro|
 
@@ -274,6 +276,8 @@ class UserConverter(IDConverter[nextcord.User]):
         This converter now lazily fetches users from the HTTP APIs if an ID is passed
         and it's not available in cache.
     """
+
+    primitive_type: nextcord.ApplicationCommandOptionType = nextcord.ApplicationCommandOptionType.user
 
     async def convert(self, ctx: Context, argument: str) -> nextcord.User:
         match = self._get_id_match(argument) or re.match(r'<@!?([0-9]{15,20})>$', argument)

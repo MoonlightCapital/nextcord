@@ -49,7 +49,7 @@ import nextcord
 
 from .errors import *
 from .cooldowns import Cooldown, BucketType, CooldownMapping, MaxConcurrency, DynamicCooldownMapping
-from .converter import run_converters, get_converter, Greedy
+from .converter import run_converters, get_converter, ObjectConverter, Greedy, CONVERTER_MAPPING
 from ._types import _BaseCommand
 from .cog import Cog
 from .context import Context
@@ -241,6 +241,8 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
         event.
     description: :class:`str`
         The message prefixed into the default help command.
+    interaction_type: :class:`.nextcord.ApplicationCommandType`
+        The type of interaction command this represents. Is 1 (CHAT_INPUT) by default.
     hidden: :class:`bool`
         If ``True``\, the default help command does not show this in the
         help output.
@@ -331,6 +333,7 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
 
         self.description: str = inspect.cleandoc(kwargs.get('description', ''))
         self.hidden: bool = kwargs.get('hidden', False)
+        self.interaction_type: ApplicationCommandType = kwargs.get('interaction_type', nextcord.ApplicationCommandType.chat_input)
 
         try:
             checks = func.__commands_checks__
@@ -693,6 +696,44 @@ class Command(_BaseCommand, Generic[CogT, P, T]):
             return parent + ' ' + self.name
         else:
             return self.name
+
+    def to_dict(self) -> Dict:
+
+        is_group = isinstance(self, Group)
+        in_group = self.root_parent
+        is_subcommand_group = is_group and in_group
+
+        root_type = self.interaction_type.value if not in_group or is_group else nextcord.ApplicationCommandOptionType.sub_command.value
+
+        data = {
+            'name': self.name,
+            'description': self.short_doc,
+            'type': root_type,
+            'options': []
+        }
+
+        print(self.name)
+
+        if is_subcommand_group:
+            data['type'] = nextcord.ApplicationCommandOptionType.sub_command_group.value
+            data['options'] = [command.to_dict() for command in self.commands]
+        elif is_group:
+            data['options'].extend([command.to_dict() for command in self.commands])
+        elif self.clean_params:
+
+            data['options'].extend([
+                {
+                    'name': self.clean_params[par].name,
+                    'description': 'test', # TODO: implement
+                    'required': self.clean_params[par].default is inspect._empty, # If there's a default value, the argument is optional
+
+                    'type': CONVERTER_MAPPING.get(self.clean_params[par].annotation, ObjectConverter).primitive_type.value
+                }
+
+                for par in self.clean_params
+            ])
+
+        return data
 
     def __str__(self) -> str:
         return self.qualified_name
