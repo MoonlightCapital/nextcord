@@ -39,8 +39,10 @@ from .message import Message, Attachment
 from .object import Object
 from .permissions import Permissions
 from .webhook.async_ import async_context, Webhook, handle_message_parameters
+from .mixins import Hashable
 
 __all__ = (
+    'ApplicationCommand',
     'Interaction',
     'InteractionMessage',
     'InteractionResponse',
@@ -50,7 +52,9 @@ __all__ = (
 
 if TYPE_CHECKING:
     from .types.interactions import (
+        ApplicationCommand as ApplicationCommandPayload,
         Interaction as InteractionPayload,
+        ApplicationCommandOption as ApplicationCommandOptionPayload,
         InteractionData,
     )
     from .guild import Guild
@@ -68,6 +72,90 @@ if TYPE_CHECKING:
     ]
 
 MISSING: Any = utils.MISSING
+
+class ApplicationCommand(Hashable):
+    # TODO: doctring
+    __slots__ = (
+        'id',
+        'type',
+        'application_id',
+        'guild_id',
+        'name',
+        'description',
+        'options',
+        'default_permission'
+    )
+
+    def __init__(self, *, data: ApplicationCommandPayload, state: ConnectionState):
+        self._state: ConnectionState = state
+        self._session: ClientSession = state.http._HTTPClient__session
+        self._from_data(data)
+
+    def _from_data(self, data: ApplicationCommandPayload):
+        self.id: int = int(data['id'])
+        self.type: ApplicationCommandType = try_enum(ApplicationCommandType, data['type'])
+        self.application_id: int = int(data['application_id'])
+        self.guild_id: Optional[int] = utils._get_as_snowflake(data, 'guild_id')
+        self.name: str = data['name']
+        self.description: str = data['description']
+        self.options: List[ApplicationCommandOption] = data.get('options') # TODO: how do i handle this?
+        self.default_permission: Optional[bool] = data.get('default_permission')
+
+    @property
+    def guild(self) -> Optional[Guild]:
+        """Optional[:class:`Guild`]: The guild the command belongs to."""
+        return self._state and self._state._get_guild(self.guild_id)
+
+    async def edit(
+        self,
+        *,
+        name: Optional[str] = MISSING,
+        description: Optional[str] = MISSING,
+        options: Optional[List]= MISSING
+        default_permission: Optional[bool] = MISSING
+    ) -> ApplicationCommand:
+        http = self._state.http
+
+        fields: Dict[str, Any] = {}
+
+        if name is not MISSING:
+            fields['name'] = name
+
+        if description is not MISSING:
+            fields['description'] = description
+
+        if options is not MISSING:
+            fields['options'] = options
+
+        if default_permission is not MISSING:
+            fields['default_permission'] = default_permission
+
+        if not self.guild_id:
+            data = await http.edit_global_command(self.application_id, self.id, fields)
+        else:
+            data = await http.edit_guild_command(self.application_id, self.guild_id, self.id, fields)
+
+        return ApplicationCommand(data=data, state=self._state)
+
+    async def delete(self) -> None:
+        if not self.guild_id:
+            await self._state.http.delete_global_command(self.application_id, self.id)
+        else:
+            await self._state.http.delete_guild_command(self.application_id, self.guild_id, self.id)
+
+    async def fetch_permissions(self): # NOTE: permissions are exclusive to guild commands
+        if not guild_id:
+            raise NotImplementedError('Only guild commands have permissions')
+
+        data = await self._state.http.get_application_command_permissions(self.application_id, self.guild_id, self.id)
+
+        # TODO: continue this
+
+
+
+    async def edit_permissions(self):
+        if not guild_id:
+            raise NotImplementedError('Only guild commands have permissions')
 
 
 class Interaction:

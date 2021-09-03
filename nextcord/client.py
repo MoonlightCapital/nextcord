@@ -61,6 +61,7 @@ from .ui.view import View
 from .stage_instance import StageInstance
 from .threads import Thread
 from .sticker import GuildSticker, StandardSticker, StickerPack, _sticker_factory
+from .interactions import ApplicationCommand
 
 if TYPE_CHECKING:
     from .abc import SnowflakeTime, PrivateChannel, GuildChannel, Snowflake
@@ -329,7 +330,7 @@ class Client:
         If this is not passed via ``__init__`` then this is retrieved
         through the gateway when an event contains the data. Usually
         after :func:`~nextcord.on_connect` is called.
-        
+
         .. versionadded:: 2.0
         """
         return self._connection.application_id
@@ -687,7 +688,7 @@ class Client:
             self._connection._activity = value.to_dict() # type: ignore
         else:
             raise TypeError('activity must derive from BaseActivity.')
-    
+
     @property
     def status(self):
         """:class:`.Status`:
@@ -758,7 +759,7 @@ class Client:
 
         This is useful if you have a channel_id but don't want to do an API call
         to send messages to it.
-        
+
         .. versionadded:: 2.0
 
         Parameters
@@ -1571,6 +1572,16 @@ class Client:
         data = await self.http.list_premium_sticker_packs()
         return [StickerPack(state=self._connection, data=pack) for pack in data['sticker_packs']]
 
+    async def fetch_application_commands(self) -> List[ApplicationCommand]:
+        # TODO: docstring
+        data = await self.http.get_global_commands(self.application_id)
+        return [ApplicationCommand(state=self._connection, data=command) for command in data]
+
+    async def fetch_application_command(self, command_id: Snowflake) -> ApplicationCommand:
+        # TODO: dosctring
+        data = await self.http.get_global_command(self.application_id, command_id)
+        return ApplicationCommand(state=self._connection, data=data)
+
     async def create_dm(self, user: Snowflake) -> DMChannel:
         """|coro|
 
@@ -1604,7 +1615,7 @@ class Client:
 
         This method should be used for when a view is comprised of components
         that last longer than the lifecycle of the program.
-        
+
         .. versionadded:: 2.0
 
         Parameters
@@ -1636,7 +1647,7 @@ class Client:
     @property
     def persistent_views(self) -> Sequence[View]:
         """Sequence[:class:`.View`]: A sequence of persistent views added to the client.
-        
+
         .. versionadded:: 2.0
         """
         return self._connection.persistent_views

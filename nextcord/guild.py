@@ -76,6 +76,7 @@ from .stage_instance import StageInstance
 from .threads import Thread, ThreadMember
 from .sticker import GuildSticker
 from .file import File
+from .interactions import ApplicationCommand
 
 
 __all__ = (
@@ -91,6 +92,7 @@ if TYPE_CHECKING:
         Thread as ThreadPayload,
     )
     from .types.voice import GuildVoiceState
+    from .types.interactions import ApplicationCommand as ApplicationCommandPayload
     from .permissions import Permissions
     from .channel import VoiceChannel, StageChannel, TextChannel, CategoryChannel, StoreChannel
     from .template import Template
@@ -2942,3 +2944,14 @@ class Guild(Hashable):
         ws = self._state._get_websocket(self.id)
         channel_id = channel.id if channel else None
         await ws.voice_state(self.id, channel_id, self_mute, self_deaf)
+
+
+    async def fetch_application_commands(self) -> List[ApplicationCommand]:
+        # TODO: docstring
+        data = await self.http.get_guild_commands(self.application_id, self.id)
+        return [ApplicationCommand(state=self._state, data=command) for command in data]
+
+    async def get_guild_command(self, command_id: Snowflake) -> ApplicationCommand:
+        # TODO: dosctring
+        data = await self.http.get_global_command(application_id=self.application_id, self.id, command_id)
+        return ApplicationCommand(state=self._state, data=data)

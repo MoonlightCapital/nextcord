@@ -56,6 +56,7 @@ __all__ = (
     'InteractionResponseType',
     'ApplicationCommandType',
     'ApplicationCommandOptionType',
+    'ApplicationCommandPermissionType',
     'NSFWLevel',
 )
 
@@ -558,6 +559,10 @@ class ApplicationCommandOptionType(Enum):
     role = 8
     mentionable = 9
     number = 10
+
+class ApplicationCommandPermissionType(Enum):
+    role = 1
+    user = 2
 
 
 class VideoQualityMode(Enum):
