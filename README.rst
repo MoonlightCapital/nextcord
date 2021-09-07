@@ -16,7 +16,8 @@ A modern, easy to use, feature-rich, and async ready API wrapper for Discord wri
 Fork notice
 --------------------------
 
-This is a fork of the Discord.py library, which unfortunately has been `officially discontinued <https://gist.github.com/Rapptz/4a2f62751b9600a31a0d3c78100287f1/>`_ at 28th August 2021. Nextcord will replace Discord.py, with **continued support and features**, to still offer former Discord.py-users a stable API wrapper for their bots.
+This is a fork of discord.py, which unfortunately has been `officially discontinued <https://gist.github.com/Rapptz/4a2f62751b9600a31a0d3c78100287f1/>`_ at 28th August 2021.
+Nextcord will try to replace discord.py, with **continued support and features**, to still offer former discord.py-users a stable API wrapper for their bots.   
 
 Key Features
 -------------
@@ -70,43 +71,23 @@ Please note that on Linux installing voice you must install the following packag
 * libffi-dev (or ``libffi-devel`` on some systems)
 * python-dev (e.g. ``python3.6-dev`` for Python 3.6)
 
+
 Quick Example
---------------
-
-.. code:: py
-
-    import nextcord
-
-    class MyClient(nextcord.Client):
-        async def on_ready(self):
-            print('Logged on as', self.user)
-
-        async def on_message(self, message):
-            # don't respond to ourselves
-            if message.author == self.user:
-                return
-
-            if message.content == 'ping':
-                await message.channel.send('pong')
-
-    client = MyClient()
-    client.run('token')
-
-Bot Example
 ~~~~~~~~~~~~~
 
 .. code:: py
 
-    import nextcord
     from nextcord.ext import commands
 
-    bot = commands.Bot(command_prefix='>')
+
+    bot = commands.Bot(command_prefix='$')
 
     @bot.command()
     async def ping(ctx):
-        await ctx.send('pong')
+        await ctx.reply('Pong!')
 
     bot.run('token')
+
 
 You can find more examples in the examples directory.
 

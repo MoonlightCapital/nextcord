@@ -221,13 +221,16 @@ class Interaction:
         self.data: Optional[InteractionData] = data.get('data')
         self.token: str = data['token']
         self.version: int = data['version']
-        self.channel_id: Optional[int] = utils._get_as_snowflake(data, 'channel_id')
-        self.guild_id: Optional[int] = utils._get_as_snowflake(data, 'guild_id')
+        self.channel_id: Optional[int] = utils._get_as_snowflake(
+            data, 'channel_id')
+        self.guild_id: Optional[int] = utils._get_as_snowflake(
+            data, 'guild_id')
         self.application_id: int = int(data['application_id'])
 
         self.message: Optional[Message]
         try:
-            self.message = Message(state=self._state, channel=self.channel, data=data['message'])  # type: ignore
+            self.message = Message(
+                state=self._state, channel=self.channel, data=data['message'])  # type: ignore
         except KeyError:
             self.message = None
 
@@ -242,7 +245,8 @@ class Interaction:
             except KeyError:
                 pass
             else:
-                self.user = Member(state=self._state, guild=guild, data=member)  # type: ignore
+                self.user = Member(state=self._state,
+                                   guild=guild, data=member)  # type: ignore
                 self._permissions = int(member.get('permissions', 0))
         else:
             try:
@@ -262,12 +266,12 @@ class Interaction:
         Note that due to a Discord limitation, DM channels are not resolved since there is
         no data to complete them. These are :class:`PartialMessageable` instead.
         """
-        guild = self.guild
-        channel = guild and guild._resolve_channel(self.channel_id)
+        if self.guild:
+            channel = self.guild._resolve_channel(self.channel_id)
         if channel is None:
             if self.channel_id is not None:
-                type = ChannelType.text if self.guild_id is not None else ChannelType.private
-                return PartialMessageable(state=self._state, id=self.channel_id, type=type)
+                channel_type = ChannelType.text if self.guild_id is not None else ChannelType.private
+                return PartialMessageable(state=self._state, id=self.channel_id, type=channel_type)
             return None
         return channel
 
@@ -343,7 +347,8 @@ class Interaction:
             session=self._session,
         )
         state = _InteractionMessageState(self, self._state)
-        message = InteractionMessage(state=state, channel=channel, data=data)  # type: ignore
+        message = InteractionMessage(
+            state=state, channel=channel, data=data)  # type: ignore
         self._original_message = message
         return message
 
@@ -428,7 +433,8 @@ class Interaction:
         )
 
         # The message channel types should always match
-        message = InteractionMessage(state=self._state, channel=self.channel, data=data)  # type: ignore
+        message = InteractionMessage(
+            state=self._state, channel=self.channel, data=data)  # type: ignore
         if view and not view.is_finished():
             self._state.store_view(view, message.id)
         return message
@@ -684,7 +690,7 @@ class InteractionResponse:
         if parent.type is not InteractionType.component:
             return
 
-        payload = {}
+        payload: Dict[str, Any] = {}
         if content is not MISSING:
             if content is None:
                 payload['content'] = None
@@ -692,7 +698,8 @@ class InteractionResponse:
                 payload['content'] = str(content)
 
         if embed is not MISSING and embeds is not MISSING:
-            raise TypeError('cannot mix both embed and embeds keyword arguments')
+            raise TypeError(
+                'cannot mix both embed and embeds keyword arguments')
 
         if embed is not MISSING:
             if embed is None:
@@ -707,7 +714,8 @@ class InteractionResponse:
             payload['attachments'] = [a.to_dict() for a in attachments]
 
         if view is not MISSING:
-            state.prevent_view_updates_for(message_id)
+            if message_id:
+                state.prevent_view_updates_for(message_id)
             if view is None:
                 payload['components'] = []
             else:
@@ -913,6 +921,8 @@ class ApplicationCommandInteractionOption:
     def __init__(self, data: dict):
 
         self.name: str = data['name']
-        self.type: ApplicationCommandOptionType = try_enum(ApplicationCommandOptionType, data['type'])
-        self.value = data.get('value')
-        self.options = [ApplicationCommandInteractionOption(opt) for opt in data.get('options', [])]
+        self.type: ApplicationCommandOptionType = try_enum(
+            ApplicationCommandOptionType, data['type'])
+        self.value: data.get('value')
+        self.options = (ApplicationCommandInteractionOption(opt)
+                        for opt in data.get('options', []))

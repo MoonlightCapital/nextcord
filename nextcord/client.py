@@ -42,10 +42,10 @@ from .emoji import Emoji
 from .channel import _threaded_channel_factory, PartialMessageable
 from .enums import ChannelType
 from .mentions import AllowedMentions
-from .errors import *
+from .errors import HTTPException, GatewayNotFound, PrivilegedIntentsRequired, InvalidData
 from .enums import Status, VoiceRegion
 from .flags import ApplicationFlags, Intents
-from .gateway import *
+from .gateway import DiscordWebSocket, ReconnectWebSocket, ConnectionClosed
 from .activity import ActivityTypes, BaseActivity, create_activity
 from .voice_client import VoiceClient
 from .http import HTTPClient
@@ -363,11 +363,11 @@ class Client:
         # Schedules the task
         return asyncio.create_task(wrapped, name=f'nextcord: {event_name}')
 
-    def dispatch(self, event: str, *args: Any, **kwargs: Any) -> None:
-        _log.debug('Dispatching event %s', event)
-        method = 'on_' + event
+    def dispatch(self, event_name: str, *args: Any, **kwargs: Any) -> None:
+        _log.debug('Dispatching event %s', event_name)
+        method = 'on_' + event_name
 
-        listeners = self._listeners.get(event)
+        listeners = self._listeners.get(event_name)
         if listeners:
             removed = []
             for i, (future, condition) in enumerate(listeners):
@@ -391,7 +391,7 @@ class Client:
                         removed.append(i)
 
             if len(removed) == len(listeners):
-                self._listeners.pop(event)
+                self._listeners.pop(event_name)
             else:
                 for idx in reversed(removed):
                     del listeners[idx]
@@ -470,6 +470,9 @@ class Client:
         """
 
         _log.info('logging in using static token')
+
+        if not isinstance(token, str):
+            raise TypeError(f"The token provided was of type {type(token)} but was expected to be str")
 
         data = await self.http.static_login(token.strip())
         self._connection.user = ClientUser(state=self._connection, data=data)
